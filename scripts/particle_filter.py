@@ -44,7 +44,7 @@ def draw_random_sample():
         weights.append(p.w)
         positions.append(p.pose)
 
-    randomList = random.choices(sampleList, weights=(5, 15, 35, 65, 100), k=self.num_particles)
+    randomList = random.choices(sampleList, weights, k=self.num_particles)
     return randomList
 
 class Particle:
@@ -131,8 +131,8 @@ class ParticleFilter:
         grid = self.map.data
 
         valid_coords = []
-        for i in range(width):
-            for j in range(height):
+        for i in range(round(width*res)):
+            for j in range(round(height*res)):
                 if grid[i*width +j] == 100:
                     valid_coords.append((i, j))
         return valid_coords
