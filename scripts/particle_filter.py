@@ -126,26 +126,30 @@ class ParticleFilter:
 
         self.map = data
     
-    def get_valid_coords(self):
-        res, width, height = self.map.info.resolution, self.map.info.width, self.map.info.height 
+    def get_particles(self):
+        """
+        Gets particles in the form
+            [x, y, yaw]
+        """
+        width, height = self.map.info.width, self.map.info.height 
         grid = self.map.data
 
-        valid_coords = []
-        for i in range(round(width*res)):
-            for j in range(round(height*res)):
-                if grid[i*width +j] == 100:
-                    valid_coords.append((i, j))
-        return valid_coords
+        coords = []
+        while len(coords) < self.num_particles:
+            x, y = randint(0, width), randint(0, height)
+            if grid[x + (y*width)] <= 0: continue
+            else: 
+                theta = uniform(0, 2*np.pi)
+                coords.append([x, y, theta])
+        return coords
 
     def initialize_particle_cloud(self):
         
-        sample_xy = self.get_valid_coords()
-        cloud_xy = sample(sample_xy, self.num_particles)
+        coords = self.get_valid_coords()
         
         self.particle_cloud = []
-        for xy in cloud_xy:
-            pos_x, pos_y = xy
-            theta = uniform(0, np.pi)
+        for coord in coords:
+            pos_x, pos_y, theta = coord
             or_x, or_y, or_z, or_w = quaternion_from_euler(0.0, 0.0, theta)
             
             pose = Pose()
