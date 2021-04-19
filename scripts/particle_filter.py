@@ -318,7 +318,9 @@ class ParticleFilter:
             for idx in cardinal_directions_idxs:
                 # starting if condition
                 ztk = data.ranges[idx]
-                if ztk > 3.5: continue
+                if ztk > 3.5: 
+                    q = q * .001
+                    continue
                 # boilerplate vars
                 particle_x, particle_y = p.pose.position.x, p.pose.position.y
                 quat_in = [p.pose.orientation.x, p.pose.orientation.y, p.pose.orientation.z, p.pose.orientation.w]
@@ -329,7 +331,7 @@ class ParticleFilter:
                 y_ztk = particle_y + ztk * np.sin(theta_z)
                 dist = self.likelihood_field.get_closest_obstacle_distance(x_ztk, y_ztk)
                 q = q * compute_prob_zero_centered_gaussian(dist, sd=0.1) # recommended SD
-        p.w = q   
+            p.w = q   
 
     def update_particles_with_motion_model(self):
 
