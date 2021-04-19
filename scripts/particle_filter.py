@@ -44,7 +44,7 @@ def draw_random_sample():
         weights.append(p.w)
         positions.append(p.pose)
 
-    randomList = random.choices(sampleList, cum_weights=(5, 15, 35, 65, 100), k=5)
+    randomList = random.choices(sampleList, weights=(5, 15, 35, 65, 100), k=self.num_particles)
     return randomList
 
 class Particle:
