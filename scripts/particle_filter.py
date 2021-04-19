@@ -126,10 +126,42 @@ class ParticleFilter:
 
         self.map = data
     
+    def get_valid_coords(self):
+        res, width, height = self.map.info.resolution, self.map.info.width, self.map.info.height 
+        grid = self.map.data
+
+        valid_coords = []
+        for i in range(res * width):
+            for j in range(res * height):
+                if grid[i][j] == 100:
+                    valid_coords.append((i, j))
+        return valid_coords
 
     def initialize_particle_cloud(self):
         
-        # TODO
+        sample_xy = self.get_valid_coords()
+        cloud_xy = random.sample(sample_xy, self.num_particles)
+        
+        self.particle_cloud = []
+        for xy in cloud_xy:
+            pos_x, pos_y = xy
+            theta = random.uniform(0, np.pi)
+            or_x, or_y, or_z, or_w = quaternion_from_euler(0.0, 0.0, theta)
+            
+            pose = Pose()
+            pose.position.x = pos_x
+            pose.position.y = pos_y
+            pose.position.z = 0
+
+            pose.orientation = Quaternion()
+            pose.orientation.x = or_x
+            pose.orientation.y = or_y
+            pose.orientation.z = or_z
+            pose.orientation.w = or_w
+
+            particle = Particle(pose, 1.0)
+            self.particle_cloud.append(particle)
+
         self.normalize_particles()
 
         self.publish_particle_cloud()
