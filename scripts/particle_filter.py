@@ -16,7 +16,7 @@ import numpy as np
 from numpy.random import random_sample
 import math
 
-from random import randint, random
+from random import randint, random, sample, uniform
 
 
 
@@ -44,7 +44,7 @@ def draw_random_sample():
         weights.append(p.w)
         positions.append(p.pose)
 
-    randomList = random.choices(sampleList, cum_weights=(5, 15, 35, 65, 100), k=5)
+    randomList = random.choices(sampleList, weights, k=self.num_particles)
     return randomList
 
 class Particle:
@@ -131,21 +131,21 @@ class ParticleFilter:
         grid = self.map.data
 
         valid_coords = []
-        for i in range(res * width):
-            for j in range(res * height):
-                if grid[i][j] == 100:
+        for i in range(round(width*res)):
+            for j in range(round(height*res)):
+                if grid[i*width +j] == 100:
                     valid_coords.append((i, j))
         return valid_coords
 
     def initialize_particle_cloud(self):
         
         sample_xy = self.get_valid_coords()
-        cloud_xy = random.sample(sample_xy, self.num_particles)
+        cloud_xy = sample(sample_xy, self.num_particles)
         
         self.particle_cloud = []
         for xy in cloud_xy:
             pos_x, pos_y = xy
-            theta = random.uniform(0, np.pi)
+            theta = uniform(0, np.pi)
             or_x, or_y, or_z, or_w = quaternion_from_euler(0.0, 0.0, theta)
             
             pose = Pose()
