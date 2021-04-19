@@ -126,7 +126,7 @@ class ParticleFilter:
 
         self.map = data
     
-    def get_particles(self):
+    def get_particle(self):
         """
         Gets particles in the form
             [x, y, yaw]
@@ -145,7 +145,7 @@ class ParticleFilter:
 
     def initialize_particle_cloud(self):
         
-        coords = self.get_valid_coords()
+        coords = self.get_particle()
         
         self.particle_cloud = []
         for coord in coords:
