@@ -137,9 +137,9 @@ class ParticleFilter:
         coords = []
         while len(coords) < self.num_particles:
             x, y = randint(0, width), randint(0, height)
-            x_coord = (x - self.map.info.origin.position.x)/self.map.info.resolution
+            x_coord = (x - self.map.info.origin.position.x) * self.map.info.resolution
             x_coord = round(x_coord)
-            y_coord = (y - self.map.info.origin.position.y)/self.map.info.resolution
+            y_coord = (y - self.map.info.origin.position.y) * self.map.info.resolution
             y_coord = round(y_coord)
             
             if grid[x_coord + y_coord] <= 0: continue
