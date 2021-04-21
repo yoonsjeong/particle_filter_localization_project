@@ -142,7 +142,7 @@ class ParticleFilter:
             y_coord = (y - self.map.info.origin.position.y)/self.map.info.resolution
             y_coord = round(y_coord)
             
-            if grid[x_coord + (y_coord * width)] <= 0: continue
+            if grid[x_coord + y_coord] <= 0: continue
             else: 
                 theta = uniform(0, 2*np.pi)
                 coords.append([x, y, theta])
