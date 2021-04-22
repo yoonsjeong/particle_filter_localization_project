@@ -107,6 +107,8 @@ class ParticleFilter:
         # subscribe to the map server
         rospy.Subscriber(self.map_topic, OccupancyGrid, self.get_map)
 
+        rospy.sleep(2)
+
         # subscribe to the lidar scan from the robot
         rospy.Subscriber(self.scan_topic, LaserScan, self.robot_scan_received)
 
@@ -131,25 +133,32 @@ class ParticleFilter:
         Gets particles in the form
             [x, y, yaw]
         """
-        width, height = self.map.info.width, self.map.info.height 
+        width, height = self.map.info.width - 1, self.map.info.height - 1
         grid = self.map.data
 
+        print(width)
+        print(height)
         coords = []
         while len(coords) < self.num_particles:
-            x, y = randint(0, width), randint(0, height)
-            x_coord = (x - self.map.info.origin.position.x) * self.map.info.resolution
-            x_coord = round(x_coord)
-            y_coord = (y - self.map.info.origin.position.y) * self.map.info.resolution
-            y_coord = round(y_coord)
+            x_coord, y_coord = randint(0, width), randint(0, height)
+            #x_coord = (x - self.map.info.origin.position.x) ## * self.map.info.resolution
+            #x_coord = round(x_coord)
+            #y_coord = (y - self.map.info.origin.position.y) ## * self.map.info.resolution
+            #y_coord = round(y_coord)
+
+           #print(x_coord + y_coord * width, len(grid))
             
-            if grid[x_coord + y_coord] <= 0: continue
+            if grid[x_coord + y_coord * width] <= 0: continue
             else: 
                 theta = uniform(0, 2*np.pi)
-                coords.append([x, y, theta])
+                coords.append([(x_coord - 197)* 384/20 , (y_coord -197) * 384/20, theta])
+                # print(len(coords))
+        print("get_paticle finishes")
         return coords
 
     def initialize_particle_cloud(self):
         
+        print("initialize particle cloud")
         coords = self.get_particle()
         
         self.particle_cloud = []
@@ -171,6 +180,7 @@ class ParticleFilter:
             particle = Particle(pose, 1.0)
             self.particle_cloud.append(particle)
 
+        print("initialize particle finishes")
         self.normalize_particles()
 
         self.publish_particle_cloud()
@@ -186,6 +196,7 @@ class ParticleFilter:
 
     def publish_particle_cloud(self):
 
+        print("hello")
         particle_cloud_pose_array = PoseArray()
         particle_cloud_pose_array.header = Header(stamp=rospy.Time.now(), frame_id=self.map_topic)
         particle_cloud_pose_array.poses
