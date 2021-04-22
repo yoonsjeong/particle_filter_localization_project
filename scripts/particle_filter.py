@@ -148,10 +148,10 @@ class ParticleFilter:
 
            #print(x_coord + y_coord * width, len(grid))
             
-            if grid[x_coord + y_coord * width] <= 0: continue
+            if grid[x_coord + y_coord * width] < 0: continue
             else: 
                 theta = uniform(0, 2*np.pi)
-                coords.append([(x_coord - 197)* 384/20 , (y_coord -197) * 384/20, theta])
+                coords.append([(x_coord - 197)* self.map.info.resolution , (y_coord -197) * self.map.info.resolution, theta])
                 # print(len(coords))
         print("get_paticle finishes")
         return coords
@@ -268,16 +268,16 @@ class ParticleFilter:
 
             # check to see if we've moved far enough to perform an update
 
-            curr_x = self.odom_pose.pose.position.x
-            old_x = self.odom_pose_last_motion_update.pose.position.x
-            curr_y = self.odom_pose.pose.position.y
-            old_y = self.odom_pose_last_motion_update.pose.position.y
-            curr_yaw = get_yaw_from_pose(self.odom_pose.pose)
-            old_yaw = get_yaw_from_pose(self.odom_pose_last_motion_update.pose)
+            self.curr_x = self.odom_pose.pose.position.x
+            self.old_x = self.odom_pose_last_motion_update.pose.position.x
+            self.curr_y = self.odom_pose.pose.position.y
+            self.old_y = self.odom_pose_last_motion_update.pose.position.y
+            self.curr_yaw = get_yaw_from_pose(self.odom_pose.pose)
+            self.old_yaw = get_yaw_from_pose(self.odom_pose_last_motion_update.pose)
 
-            if (np.abs(curr_x - old_x) > self.lin_mvmt_threshold or 
-                np.abs(curr_y - old_y) > self.lin_mvmt_threshold or
-                np.abs(curr_yaw - old_yaw) > self.ang_mvmt_threshold):
+            if (np.abs(self.curr_x - self.old_x) > self.lin_mvmt_threshold or 
+                np.abs(self.curr_y - self.old_y) > self.lin_mvmt_threshold or
+                np.abs(self.curr_yaw - self.old_yaw) > self.ang_mvmt_threshold):
 
                 # This is where the main logic of the particle filter is carried out
 
