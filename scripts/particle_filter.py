@@ -148,7 +148,7 @@ class ParticleFilter:
 
            #print(x_coord + y_coord * width, len(grid))
             
-            if grid[x_coord + y_coord * width] < 0: continue
+            if grid[x_coord + y_coord * (width + 1)] < 0: continue
             else: 
                 theta = uniform(0, 2*np.pi)
                 coords.append([(x_coord - 197)* self.map.info.resolution , (y_coord -197) * self.map.info.resolution, theta])
@@ -358,7 +358,7 @@ class ParticleFilter:
 
         for p in self.particle_cloud:
             p.pose.position.x = p.pose.position.x + (self.curr_x - self.old_x)
-            p.pose.position.y = p.pose.posiiton.y + (self.curr_y - self.old_y)
+            p.pose.position.y = p.pose.position.y + (self.curr_y - self.old_y)
             q = quaternion_from_euler(0.0, 0.0, self.curr_yaw - self.old_yaw)
             p.pose.orientation.x = p.pose.orientation.x + q[0]
             p.pose.orientation.y = p.pose.orientation.y + q[1]
