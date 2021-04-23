@@ -18,6 +18,7 @@ import math
 
 from random import randint, random, sample, uniform
 from likelihood_field import LikelihoodField
+import random
 
 
 
@@ -40,19 +41,6 @@ def compute_prob_zero_centered_gaussian(dist, sd):
     prob = c * math.exp((-math.pow(dist,2))/(2 * math.pow(sd, 2)))
     return prob
 
-def draw_random_sample():
-    """ Draws a random sample of n elements from a given list of choices and their specified probabilities.
-    We recommend that you fill in this function using random_sample.
-    """
-    # TODO
-    weights = []
-    positions = []
-    for p in self.particle_cloud:
-        weights.append(p.w)
-        positions.append(p.pose)
-
-    randomList = random.choices(sampleList, weights, k=self.num_particles)
-    return randomList
 
 class Particle:
 
@@ -132,7 +120,19 @@ class ParticleFilter:
 
         self.initialized = True
 
+    def draw_random_sample(self):
+        """ Draws a random sample of n elements from a given list of choices and their specified probabilities.
+        We recommend that you fill in this function using random_sample.
+        """
+        # TODO
+        prob_weights = []
+        positions = []
+        for p in self.particle_cloud:
+            prob_weights.append(p.w)
+            positions.append(p.pose)
 
+        randomList = random.choices(positions, weights = prob_weights, k=self.num_particles)
+        return randomList
 
     def get_map(self, data):
 
@@ -230,7 +230,7 @@ class ParticleFilter:
 
     def resample_particles(self):
 
-        randomList = draw_random_sample()
+        randomList = self.draw_random_sample()
         for p in range(len(self.particle_cloud)):
             self.particle_cloud[p].pose = randomList[p]
             self.particle_cloud[p].w = 1
@@ -313,12 +313,13 @@ class ParticleFilter:
         
         x_sum = 0 
         y_sum = 0
-        theta_sum
+        theta_sum = 0
 
         for p in self.particle_cloud:
             x_sum = x_sum + p.pose.position.x
             y_sum = y_sum + p.pose.position.y
-            theta_sum = theta_sum + euler_from_quaternion(p.orientation.x, p.orientation.y, p.orientation.z, p.orientation.w)
+            quaternion = (p.pose.orientation.x, p.pose.orientation.y, p.pose.orientation.z,p.pose.orientation.w)
+            theta_sum = theta_sum + euler_from_quaternion(quaternion)[2] #, p.pose.orientation.y, p.pose.orientation.z, p.pose.orientation.w)
 
         x_aver = x_sum / len(self.particle_cloud)
         y_aver = y_sum / len(self.particle_cloud)
