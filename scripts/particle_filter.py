@@ -230,7 +230,7 @@ class ParticleFilter:
 
     def resample_particles(self):
 
-        randomList = random_sample()
+        randomList = draw_random_sample()
         for p in range(len(self.particle_cloud)):
             self.particle_cloud[p].pose = randomList[p]
             self.particle_cloud[p].w = 1
