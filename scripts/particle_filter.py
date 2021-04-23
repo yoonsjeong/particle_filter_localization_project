@@ -146,8 +146,7 @@ class ParticleFilter:
         width, height = self.map.info.width - 1, self.map.info.height - 1
         grid = self.map.data
 
-        print(width)
-        print(height)
+        
         coords = []
         while len(coords) < self.num_particles:
             x_coord, y_coord = randint(0, width), randint(0, height)
@@ -175,6 +174,9 @@ class ParticleFilter:
         for coord in coords:
             pos_x, pos_y, theta = coord
             or_x, or_y, or_z, or_w = quaternion_from_euler(0.0, 0.0, theta)
+
+            if pos_y > 10:
+                print(pos_x)
             
             pose = Pose()
             pose.position.x = pos_x
@@ -230,7 +232,9 @@ class ParticleFilter:
 
     def resample_particles(self):
 
+        print("resample_particles")
         randomList = self.draw_random_sample()
+        # print(randomList)
         for p in range(len(self.particle_cloud)):
             self.particle_cloud[p].pose = randomList[p]
             self.particle_cloud[p].w = 1
@@ -339,6 +343,7 @@ class ParticleFilter:
     
     def update_particle_weights_with_measurement_model(self, data):
 
+        print("update_particle_weights")
         cardinal_directions_idxs = [0, 45 , 90, 135, 180, 225, 270, 315]
         for p in self.particle_cloud:
             q = 1
@@ -359,6 +364,8 @@ class ParticleFilter:
                 dist = self.likelihood_field.get_closest_obstacle_distance(x_ztk, y_ztk)
                 q = q * compute_prob_zero_centered_gaussian(dist, sd=0.1) # recommended SD
             p.w = q   
+            #if p.w > .00001:
+                #print(p.w)
 
     def update_particles_with_motion_model(self):
 
@@ -366,16 +373,24 @@ class ParticleFilter:
         # all of the particles correspondingly
 
         # TODO
+        print("update_particles_with_motion_model")
 
         for p in self.particle_cloud:
-            p.pose.position.x = p.pose.position.x + (self.curr_x - self.old_x)
-            p.pose.position.y = p.pose.position.y + (self.curr_y - self.old_y)
+            if p.pose.position.x > 10:
+                print(p.pose.position.x)
+            #print(p.pose.position.x,p.pose.position.y,p.pose.position.z)
+            p.pose.position.x = (p.pose.position.x + (self.curr_x - self.old_x))
+            p.pose.position.y = (p.pose.position.y + (self.curr_y - self.old_y))
             q = quaternion_from_euler(0.0, 0.0, self.curr_yaw - self.old_yaw)
             p.pose.orientation.x = p.pose.orientation.x + q[0]
             p.pose.orientation.y = p.pose.orientation.y + q[1]
             p.pose.orientation.z = p.pose.orientation.z + q[2]
             p.pose.orientation.w = p.pose.orientation.w + q[3]
-
+            #print(p.pose.position.x,p.pose.position.y,p.pose.position.z)
+            #print("\n")
+        #print(self.curr_x - self.old_x)
+        #print(self.curr_y - self.old_y)
+        exit()
 
 if __name__=="__main__":
     
