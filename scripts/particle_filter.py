@@ -211,13 +211,15 @@ class ParticleFilter:
         weight_sum = 0
         for p in self.particle_cloud:
             weight_sum += p.w
-        
+        print("weight sum is ", weight_sum)
         new_particle_cloud = []
         for p in self.particle_cloud:
             new_p = p
+            if (new_p.w / weight_sum) == float('inf'):
+                print(f"got infinity for {new_p.w} / {weight_sum}")
             new_p.w = new_p.w / weight_sum
             new_particle_cloud.append(new_p)
-        # self.particle_cloud = new_particle_cloud
+        self.particle_cloud = new_particle_cloud
 
     def publish_particle_cloud(self):
 
@@ -251,9 +253,11 @@ class ParticleFilter:
         weight_list = []
         for p in self.particle_cloud:
             weight_list.append(p.w)
+
         new_particle_cloud = choices(self.particle_cloud, \
-                                     weights=weight_list, \
-                                     k=self.num_particles)
+                                    weights=weight_list, \
+                                    k=self.num_particles)
+
         self.particle_cloud = new_particle_cloud
 
         print(f"resample_particles: {sum(weight_list)} should be approx 1.00") 
@@ -264,9 +268,13 @@ class ParticleFilter:
         print("========================")
         for w in weight_list:
             print("weight:", w)
-        print("========================")
-        for np in new_particle_cloud:
-            print("new:", np)
+        # print("========================")
+        # for part in self.particle_cloud:
+        #     print("new part:", part)
+        #     print("new weight:", part.w)
+        # print("========================")
+        # for np in new_particle_cloud:
+        #     print("new:", np)
         # for p in range(len(self.particle_cloud)):
         #     self.particle_cloud[p].pose = randomList[p]
         #     self.particle_cloud[p].w = 1
@@ -385,7 +393,7 @@ class ParticleFilter:
                 # starting if condition
                 ztk = data.ranges[idx]
                 if ztk >= 3.5: # z_max
-                    q = q * .001
+                    q = q * 1e-30
                     continue
 
                 # boilerplate vars
@@ -400,13 +408,22 @@ class ParticleFilter:
                 dist = self.likelihood_field.get_closest_obstacle_distance(x_ztk, y_ztk)
                 gauss = compute_prob_zero_centered_gaussian(dist, sd=0.1) # recommended SD
 
-                if math.isinf(gauss):
+                if math.isinf(q):
                     print("got infinity")
+                    print("x_ztk", x_ztk)
+                    print("y_ztk", y_ztk)
+                    print("dist", dist)
+                    print("gauss", gauss)
                 elif math.isnan(gauss):
-                    q *= 0.001
+                    q *= 1e-30
                 else:  
                     q *= gauss
-
+            if math.isinf(q):
+                print("got infinity")
+                print("x_ztk", x_ztk)
+                print("y_ztk", y_ztk)
+                print("dist", dist)
+                print("gauss", gauss)
             # print("The final value of q:", q)
             new_p.w = q
             new_particle_cloud.append(new_p)
