@@ -13,12 +13,10 @@ from tf import TransformBroadcaster
 from tf.transformations import quaternion_from_euler, euler_from_quaternion
 
 import numpy as np
-from numpy.random import random_sample, normal
+from numpy.random import random_sample
 import math
 
-from random import randint, random, sample, uniform, choices
-from likelihood_field import LikelihoodField
-import random
+from random import randint, random, choices
 
 
 
@@ -34,12 +32,17 @@ def get_yaw_from_pose(p):
 
     return yaw
 
-def compute_prob_zero_centered_gaussian(dist, sd):
-    """ Takes in distance from zero (dist) and standard deviation (sd) for gaussian
-        and returns probability (likelihood) of observation """
-    c = 1.0 / (sd * math.sqrt(2 * math.pi))
-    prob = c * math.exp((-math.pow(dist,2))/(2 * math.pow(sd, 2)))
-    return prob
+
+def draw_random_sample(particle_list, num_to_sample):
+    """ Draws a random sample of n elements from a given list of choices and their specified probabilities.
+    We recommend that you fill in this function using random_sample.
+    """
+    weights = []
+    for p in particle_list:
+        weights.append(p.w)
+
+    out = choices(sample_from, weights=weights, k=num_to_sample)
+    return out
 
 
 class Particle:
@@ -51,14 +54,6 @@ class Particle:
 
         # particle weight
         self.w = w
-
-    def __str__(self):
-        theta = euler_from_quaternion([
-            self.pose.orientation.x, 
-            self.pose.orientation.y, 
-            self.pose.orientation.z, 
-            self.pose.orientation.w])[2]
-        return ("Particle: [" + str(self.pose.position.x) + ", " + str(self.pose.position.y) + ", " + str(theta) + "]")
 
 
 
@@ -82,9 +77,6 @@ class ParticleFilter:
 
         # inialize our map
         self.map = OccupancyGrid()
-
-        #initialize likelihood field
-        self.likelihood_field = LikelihoodField()
 
         # the number of particles used in the particle filter
         self.num_particles = 10000
@@ -113,8 +105,6 @@ class ParticleFilter:
         # subscribe to the map server
         rospy.Subscriber(self.map_topic, OccupancyGrid, self.get_map)
 
-        rospy.sleep(2)
-
         # subscribe to the lidar scan from the robot
         rospy.Subscriber(self.scan_topic, LaserScan, self.robot_scan_received)
 
@@ -128,25 +118,14 @@ class ParticleFilter:
 
         self.initialized = True
 
-    def draw_random_sample(self):
-        """ Draws a random sample of n elements from a given list of choices and their specified probabilities.
-        We recommend that you fill in this function using random_sample.
-        """
-        # TODO
-        prob_weights = []
-        positions = []
-        for p in self.particle_cloud:
-            prob_weights.append(p.w)
-            positions.append(p.pose)
 
-        randomList = random.choices(positions, weights = prob_weights, k=self.num_particles)
-        return randomList
 
     def get_map(self, data):
 
         self.map = data
     
-    def get_particle(self):
+
+    def get_init_particles(self):
         """
         Gets particles in the form
             [x, y, yaw]
@@ -157,26 +136,17 @@ class ParticleFilter:
         
         coords = []
         while len(coords) < self.num_particles:
-            x_coord, y_coord = randint(0, width), randint(0, height)
-            #x_coord = (x - self.map.info.origin.position.x) ## * self.map.info.resolution
-            #x_coord = round(x_coord)
-            #y_coord = (y - self.map.info.origin.position.y) ## * self.map.info.resolution
-            #y_coord = round(y_coord)
-
-           #print(x_coord + y_coord * width, len(grid))
-            
+            x_coord, y_coord = randint(0, width), randint(0, height)        
             if grid[x_coord + y_coord * (width + 1)] < 0: continue
             else: 
                 theta = uniform(0, 2*np.pi)
                 coords.append([(x_coord - 197)* self.map.info.resolution , (y_coord -197) * self.map.info.resolution, theta])
-                # print(len(coords))
-        print("get_paticle finishes")
         return coords
 
     def initialize_particle_cloud(self):
         
         print("initialize particle cloud")
-        coords = self.get_particle()
+        coords = self.get_init_particles()
         
         self.particle_cloud = []
         for coord in coords:
@@ -200,7 +170,6 @@ class ParticleFilter:
             particle = Particle(pose, 1.0)
             self.particle_cloud.append(particle)
 
-        print("initialize particle finishes")
         self.normalize_particles()
 
         self.publish_particle_cloud()
@@ -211,19 +180,17 @@ class ParticleFilter:
         weight_sum = 0
         for p in self.particle_cloud:
             weight_sum += p.w
-        print("weight sum is ", weight_sum)
-        new_particle_cloud = []
         for p in self.particle_cloud:
-            new_p = p
-            if (new_p.w / weight_sum) == float('inf'):
-                print(f"got infinity for {new_p.w} / {weight_sum}")
-            new_p.w = new_p.w / weight_sum
-            new_particle_cloud.append(new_p)
-        self.particle_cloud = new_particle_cloud
+            save = p.w
+            p.w /= weight_sum
+            
+            # check for inf
+            if math.isinf(p.w):
+                print(f"Something went wrong. {save} / {weight_sum} = inf")
+
 
     def publish_particle_cloud(self):
 
-        print("hello")
         particle_cloud_pose_array = PoseArray()
         particle_cloud_pose_array.header = Header(stamp=rospy.Time.now(), frame_id=self.map_topic)
         particle_cloud_pose_array.poses
@@ -246,38 +213,8 @@ class ParticleFilter:
 
 
     def resample_particles(self):
-
-        # print("resample_particles")
-        # randomList = self.draw_random_sample()
-        # print(randomList)
-        weight_list = []
-        for p in self.particle_cloud:
-            weight_list.append(p.w)
-
-        new_particle_cloud = choices(self.particle_cloud, \
-                                    weights=weight_list, \
-                                    k=self.num_particles)
-
-        self.particle_cloud = new_particle_cloud
-
-        print(f"resample_particles: {sum(weight_list)} should be approx 1.00") 
-        print(f"length of weight list is {len(weight_list)}") 
-
-        # for p in self.particle_cloud:
-        #     print("old particle:", p)
-        print("========================")
-        for w in weight_list:
-            print("weight:", w)
-        # print("========================")
-        # for part in self.particle_cloud:
-        #     print("new part:", part)
-        #     print("new weight:", part.w)
-        # print("========================")
-        # for np in new_particle_cloud:
-        #     print("new:", np)
-        # for p in range(len(self.particle_cloud)):
-        #     self.particle_cloud[p].pose = randomList[p]
-        #     self.particle_cloud[p].w = 1
+        resample = draw_random_sample(self.particle_cloud, self.num_particles)
+        self.particle_cloud = resample
 
 
     def robot_scan_received(self, data):
@@ -292,7 +229,7 @@ class ParticleFilter:
 
         # wait for a little bit for the transform to become avaliable (in case the scan arrives
         # a little bit before the odom to base_footprint transform was updated) 
-        self.tf_listener.waitForTransform(self.base_frame, self.odom_frame, data.header.stamp, rospy.Duration(1.0))
+        self.tf_listener.waitForTransform(self.base_frame, self.odom_frame, data.header.stamp, rospy.Duration(0.5))
         if not(self.tf_listener.canTransform(self.base_frame, data.header.frame_id, data.header.stamp)):
             return
 
@@ -322,16 +259,16 @@ class ParticleFilter:
 
             # check to see if we've moved far enough to perform an update
 
-            self.curr_x = self.odom_pose.pose.position.x
-            self.old_x = self.odom_pose_last_motion_update.pose.position.x
-            self.curr_y = self.odom_pose.pose.position.y
-            self.old_y = self.odom_pose_last_motion_update.pose.position.y
-            self.curr_yaw = get_yaw_from_pose(self.odom_pose.pose)
-            self.old_yaw = get_yaw_from_pose(self.odom_pose_last_motion_update.pose)
+            curr_x = self.odom_pose.pose.position.x
+            old_x = self.odom_pose_last_motion_update.pose.position.x
+            curr_y = self.odom_pose.pose.position.y
+            old_y = self.odom_pose_last_motion_update.pose.position.y
+            curr_yaw = get_yaw_from_pose(self.odom_pose.pose)
+            old_yaw = get_yaw_from_pose(self.odom_pose_last_motion_update.pose)
 
-            if (np.abs(self.curr_x - self.old_x) > self.lin_mvmt_threshold or 
-                np.abs(self.curr_y - self.old_y) > self.lin_mvmt_threshold or
-                np.abs(self.curr_yaw - self.old_yaw) > self.ang_mvmt_threshold):
+            if (np.abs(curr_x - old_x) > self.lin_mvmt_threshold or 
+                np.abs(curr_y - old_y) > self.lin_mvmt_threshold or
+                np.abs(curr_yaw - old_yaw) > self.ang_mvmt_threshold):
 
                 # This is where the main logic of the particle filter is carried out
 
@@ -380,11 +317,12 @@ class ParticleFilter:
         p.orientation.w = q[3]
         self.robot_estimate = p 
 
+
     
     def update_particle_weights_with_measurement_model(self, data):
 
         print("update_particle_weights")
-        cardinal_directions_idxs = [0, 45 , 90, 135, 180, 225, 270, 315]
+        cardinal_directions_idxs = [0, 45, 90, 135, 180, 225, 270, 315]
         new_particle_cloud = []
         for p in self.particle_cloud:
             new_p = p
@@ -429,6 +367,9 @@ class ParticleFilter:
             new_particle_cloud.append(new_p)
         self.particle_cloud = new_particle_cloud
 
+
+        
+
     def update_particles_with_motion_model(self):
         """ This code uses the provided odometry values to update the particle cloud.
         delta_x, delta_y, delta_q represent the change in x-position, y-position, and
@@ -457,15 +398,11 @@ class ParticleFilter:
 
         self.particle_cloud = new_particle_cloud
 
+
+
 if __name__=="__main__":
     
 
     pf = ParticleFilter()
 
     rospy.spin()
-
-
-
-
-
-
