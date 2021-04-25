@@ -52,6 +52,14 @@ class Particle:
         # particle weight
         self.w = w
 
+    def __str__(self):
+        theta = euler_from_quaternion([
+            self.pose.orientation.x, 
+            self.pose.orientation.y, 
+            self.pose.orientation.z, 
+            self.pose.orientation.w])[2]
+        return ("Particle: [" + str(self.pose.position.x) + ", " + str(self.pose.position.y) + ", " + str(theta) + "]")
+
 
 
 class ParticleFilter:
@@ -235,9 +243,9 @@ class ParticleFilter:
         print("resample_particles")
         randomList = self.draw_random_sample()
         # print(randomList)
-        for p in range(len(self.particle_cloud)):
-            self.particle_cloud[p].pose = randomList[p]
-            self.particle_cloud[p].w = 1
+        # for p in range(len(self.particle_cloud)):
+        #     self.particle_cloud[p].pose = randomList[p]
+        #     self.particle_cloud[p].w = 1
 
 
     def robot_scan_received(self, data):
@@ -368,29 +376,29 @@ class ParticleFilter:
                 #print(p.w)
 
     def update_particles_with_motion_model(self):
+        """ This code uses the provided odometry values to update the particle cloud.
+        delta_x, delta_y, delta_q represent the change in x-position, y-position, and
+        yaw-position (in quaternion form)
+        """
+        print("Running update_particles_with_motion_model...")
+        
+        delta_x, delta_y = self.curr_x - self.old_x, self.curr_y - self.old_y
+        delta_q = quaternion_from_euler(0.0, 0.0, self.curr_yaw - self.old_yaw)
 
-        # based on the how the robot has moved (calculated from its odometry), we'll  move
-        # all of the particles correspondingly
-
-        # TODO
-        print("update_particles_with_motion_model")
-
+        new_particle_cloud = []
         for p in self.particle_cloud:
-            if p.pose.position.x > 10:
-                print(p.pose.position.x)
-            #print(p.pose.position.x,p.pose.position.y,p.pose.position.z)
-            p.pose.position.x = (p.pose.position.x + (self.curr_x - self.old_x))
-            p.pose.position.y = (p.pose.position.y + (self.curr_y - self.old_y))
-            q = quaternion_from_euler(0.0, 0.0, self.curr_yaw - self.old_yaw)
-            p.pose.orientation.x = p.pose.orientation.x + q[0]
-            p.pose.orientation.y = p.pose.orientation.y + q[1]
-            p.pose.orientation.z = p.pose.orientation.z + q[2]
-            p.pose.orientation.w = p.pose.orientation.w + q[3]
-            #print(p.pose.position.x,p.pose.position.y,p.pose.position.z)
-            #print("\n")
-        #print(self.curr_x - self.old_x)
-        #print(self.curr_y - self.old_y)
-        exit()
+            new_p = p
+
+            new_p.pose.position.x += delta_x
+            new_p.pose.position.y += delta_y
+
+            new_p.pose.orientation.x += delta_q[0]
+            new_p.pose.orientation.y += delta_q[1]
+            new_p.pose.orientation.z += delta_q[2]
+            new_p.pose.orientation.w += delta_q[3]
+            new_particle_cloud.append(new_p)
+
+        self.particle_cloud = new_particle_cloud
 
 if __name__=="__main__":
     
