@@ -13,10 +13,12 @@ from tf import TransformBroadcaster
 from tf.transformations import quaternion_from_euler, euler_from_quaternion
 
 import numpy as np
-from numpy.random import random_sample
+from numpy.random import random_sample, normal
 import math
 
-from random import randint, random, choices
+from random import randint, random, sample, uniform, choices
+from likelihood_field import LikelihoodField
+import random
 
 
 
@@ -32,7 +34,13 @@ def get_yaw_from_pose(p):
 
     return yaw
 
-
+def compute_prob_zero_centered_gaussian(dist, sd):
+    """ Takes in distance from zero (dist) and standard deviation (sd) for gaussian
+        and returns probability (likelihood) of observation """
+    c = 1.0 / (sd * math.sqrt(2 * math.pi))
+    prob = c * math.exp((-math.pow(dist,2))/(2 * math.pow(sd, 2)))
+    return prob
+    
 def draw_random_sample(particle_list, num_to_sample):
     """ Draws a random sample of n elements from a given list of choices and their specified probabilities.
     We recommend that you fill in this function using random_sample.
