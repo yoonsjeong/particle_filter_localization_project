@@ -13,10 +13,10 @@ from tf import TransformBroadcaster
 from tf.transformations import quaternion_from_euler, euler_from_quaternion
 
 import numpy as np
-from numpy.random import random_sample
+from numpy.random import random_sample, normal
 import math
 
-from random import randint, random, sample, uniform
+from random import randint, random, sample, uniform, choices
 from likelihood_field import LikelihoodField
 import random
 
@@ -208,11 +208,16 @@ class ParticleFilter:
 
     def normalize_particles(self):
         # make all the particle weights sum to 1.0
-        sum = 0
+        weight_sum = 0
         for p in self.particle_cloud:
-            sum = sum + p.w
+            weight_sum += p.w
+        
+        new_particle_cloud = []
         for p in self.particle_cloud:
-            p.w = p.w / sum
+            new_p = p
+            new_p.w = new_p.w / weight_sum
+            new_particle_cloud.append(new_p)
+        # self.particle_cloud = new_particle_cloud
 
     def publish_particle_cloud(self):
 
@@ -240,9 +245,28 @@ class ParticleFilter:
 
     def resample_particles(self):
 
-        print("resample_particles")
-        randomList = self.draw_random_sample()
+        # print("resample_particles")
+        # randomList = self.draw_random_sample()
         # print(randomList)
+        weight_list = []
+        for p in self.particle_cloud:
+            weight_list.append(p.w)
+        new_particle_cloud = choices(self.particle_cloud, \
+                                     weights=weight_list, \
+                                     k=self.num_particles)
+        self.particle_cloud = new_particle_cloud
+
+        print(f"resample_particles: {sum(weight_list)} should be approx 1.00") 
+        print(f"length of weight list is {len(weight_list)}") 
+
+        # for p in self.particle_cloud:
+        #     print("old particle:", p)
+        print("========================")
+        for w in weight_list:
+            print("weight:", w)
+        print("========================")
+        for np in new_particle_cloud:
+            print("new:", np)
         # for p in range(len(self.particle_cloud)):
         #     self.particle_cloud[p].pose = randomList[p]
         #     self.particle_cloud[p].w = 1
@@ -353,27 +377,40 @@ class ParticleFilter:
 
         print("update_particle_weights")
         cardinal_directions_idxs = [0, 45 , 90, 135, 180, 225, 270, 315]
+        new_particle_cloud = []
         for p in self.particle_cloud:
+            new_p = p
             q = 1
             for idx in cardinal_directions_idxs:
                 # starting if condition
                 ztk = data.ranges[idx]
-                if ztk > 3.5: 
+                if ztk >= 3.5: # z_max
                     q = q * .001
                     continue
+
                 # boilerplate vars
                 particle_x, particle_y = p.pose.position.x, p.pose.position.y
                 quat_in = [p.pose.orientation.x, p.pose.orientation.y, p.pose.orientation.z, p.pose.orientation.w]
                 theta_z = euler_from_quaternion(quat_in)[2]
                 theta_z += idx * np.pi / 180 # add curr cardinal direction (in rads)
+
                 # algorithm
-                x_ztk = particle_x + ztk * np.cos(theta_z)
-                y_ztk = particle_y + ztk * np.sin(theta_z)
+                x_ztk = particle_x + (ztk * np.cos(theta_z))
+                y_ztk = particle_y + (ztk * np.sin(theta_z))
                 dist = self.likelihood_field.get_closest_obstacle_distance(x_ztk, y_ztk)
-                q = q * compute_prob_zero_centered_gaussian(dist, sd=0.1) # recommended SD
-            p.w = q   
-            #if p.w > .00001:
-                #print(p.w)
+                gauss = compute_prob_zero_centered_gaussian(dist, sd=0.1) # recommended SD
+
+                if math.isinf(gauss):
+                    print("got infinity")
+                elif math.isnan(gauss):
+                    q *= 0.001
+                else:  
+                    q *= gauss
+
+            # print("The final value of q:", q)
+            new_p.w = q
+            new_particle_cloud.append(new_p)
+        self.particle_cloud = new_particle_cloud
 
     def update_particles_with_motion_model(self):
         """ This code uses the provided odometry values to update the particle cloud.
@@ -390,7 +427,10 @@ class ParticleFilter:
             new_p = p
 
             new_p.pose.position.x += delta_x
+            new_p.pose.position.x += normal(0, 0.1) # noise
+
             new_p.pose.position.y += delta_y
+            new_p.pose.position.y += normal(0, 0.1) # noise
 
             new_p.pose.orientation.x += delta_q[0]
             new_p.pose.orientation.y += delta_q[1]
