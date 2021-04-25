@@ -331,7 +331,7 @@ class ParticleFilter:
                 # starting if condition
                 ztk = data.ranges[idx]
                 if ztk >= 3.5: # z_max
-                    q = q * 1e-30
+                    q *= 1e-30
                     continue
 
                 # boilerplate vars
@@ -345,14 +345,7 @@ class ParticleFilter:
                 y_ztk = particle_y + (ztk * np.sin(theta_z))
                 dist = self.likelihood_field.get_closest_obstacle_distance(x_ztk, y_ztk)
                 gauss = compute_prob_zero_centered_gaussian(dist, sd=0.1) # recommended SD
-
-                if math.isinf(q):
-                    print("got infinity")
-                    print("x_ztk", x_ztk)
-                    print("y_ztk", y_ztk)
-                    print("dist", dist)
-                    print("gauss", gauss)
-                elif math.isnan(gauss):
+                if math.isnan(gauss):
                     q *= 1e-30
                 else:  
                     q *= gauss
