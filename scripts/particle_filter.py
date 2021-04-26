@@ -13,14 +13,14 @@ from tf import TransformBroadcaster
 from tf.transformations import quaternion_from_euler, euler_from_quaternion
 
 import numpy as np
-from numpy.random import random_sample, normal
+from numpy.random import random_sample, normal, choice
 import math
 
-from random import randint, random, sample, uniform, choices
+from random import randint, random, sample, uniform
 from likelihood_field import LikelihoodField
 import random
 
-
+from copy import deepcopy
 
 def get_yaw_from_pose(p):
     """ A helper function that takes in a Pose object (geometry_msgs) and returns yaw"""
@@ -87,7 +87,7 @@ class ParticleFilter:
         self.likelihood_field = LikelihoodField()
 
         # the number of particles used in the particle filter
-        self.num_particles = 5
+        self.num_particles = 5000
 
         # initialize the particle cloud array
         self.particle_cloud = []
@@ -213,14 +213,10 @@ class ParticleFilter:
         for p in self.particle_cloud:
             weight_sum += p.w
         print("weight sum is ", weight_sum)
-        new_particle_cloud = []
-        for p in self.particle_cloud:
-            new_p = p
-            new_p.w = new_p.w / weight_sum
-            if (new_p.w) == float('inf'):
-                print(f"got infinity for {new_p.w} divided by {weight_sum}")
-            new_particle_cloud.append(new_p)
-        self.particle_cloud = new_particle_cloud
+
+        for i, p in enumerate(self.particle_cloud):
+            new_p = Particle(p.pose, p.w / weight_sum)
+            self.particle_cloud[i] = new_p
 
     def publish_particle_cloud(self):
 
@@ -255,9 +251,17 @@ class ParticleFilter:
         for p in self.particle_cloud:
             weight_list.append(p.w)
 
-        new_particle_cloud = choices(self.particle_cloud, \
-                                    weights=weight_list, \
-                                    k=self.num_particles)
+        index_list = list(range(len(self.particle_cloud)))
+
+        new_particle_cloud = choice(index_list, \
+                                    p=weight_list, \
+                                    size=self.num_particles,\
+                                    replace=True)
+
+        new_particle_cloud = []
+        for i in index_list:
+            cp = deepcopy(self.particle_cloud[i])
+            new_particle_cloud.append(cp)
 
         self.particle_cloud = new_particle_cloud
 
@@ -342,7 +346,7 @@ class ParticleFilter:
 
                 self.normalize_particles()
 
-                # self.resample_particles()
+                self.resample_particles()
 
                 self.update_estimated_robot_pose()
 
@@ -387,16 +391,15 @@ class ParticleFilter:
         print("update_particle_weights")
         cardinal_directions_idxs = [0, 45 , 90, 135, 180, 225, 270, 315]
         new_particle_cloud = []
-        for p in self.particle_cloud:
-            new_p = p
+        for i,p in enumerate(self.particle_cloud):
             q = 1
             for idx in cardinal_directions_idxs:
                 # starting if condition
                 ztk = data.ranges[idx]
                 if ztk >= 3.5: # z_max
-                    ztk=3.5
-                    # q = q * 1e-30
-                    # continue
+                    # ztk=3.5
+                    q = q * 1e-30
+                    continue
 
                 # boilerplate vars
                 particle_x, particle_y = p.pose.position.x, p.pose.position.y
@@ -408,16 +411,12 @@ class ParticleFilter:
                 x_ztk = particle_x + (ztk * np.cos(theta_z))
                 y_ztk = particle_y + (ztk * np.sin(theta_z))
                 dist = self.likelihood_field.get_closest_obstacle_distance(x_ztk, y_ztk)
-                gauss = compute_prob_zero_centered_gaussian(dist, sd=0.1) # recommended SD
-
-                if math.isinf(q):
-                    print("got infinity")
-                    print("x_ztk", x_ztk)
-                    print("y_ztk", y_ztk)
-                    print("dist", dist)
-                    print("gauss", gauss)
-                elif math.isnan(gauss):
-                    q *= 1e-30
+                gauss = compute_prob_zero_centered_gaussian(dist, sd=.5)
+                
+                if math.isnan(gauss):
+                    print("GOT NAN")
+                    q = 0
+                    break
                 else:  
                     q *= gauss
             if math.isinf(q):
@@ -427,9 +426,8 @@ class ParticleFilter:
                 print("dist", dist)
                 print("gauss", gauss)
             # print("The final value of q:", q)
-            new_p.w = q
-            new_particle_cloud.append(new_p)
-        self.particle_cloud = new_particle_cloud
+            self.particle_cloud[i].w = q
+            # new_p.w = 1 # test
 
     def update_particles_with_motion_model(self):
         """ This code uses the provided odometry values to update the particle cloud.
@@ -443,26 +441,28 @@ class ParticleFilter:
         # delta_q = quaternion_from_euler(0.0, 0.0, self.curr_yaw - self.old_yaw)
 
         new_particle_cloud = []
-        for p in self.particle_cloud:
-            new_p = p
+        for i,p in enumerate(self.particle_cloud):
+            new_pose = Pose()
 
-            new_p.pose.position.x += delta_x
-            new_p.pose.position.x += normal(0, 0.1) # noise
+            new_pose.position.x = p.pose.position.x
+            new_pose.position.x += delta_x
+            new_pose.position.x += normal(0, 0.1) # noise
 
-            new_p.pose.position.y += delta_y
-            new_p.pose.position.y += normal(0, 0.1) # noise
+            new_pose.position.y = p.pose.position.y
+            new_pose.position.y += delta_y
+            new_pose.position.y += normal(0, 0.1) # noise
 
-            new_yaw = get_yaw_from_pose(new_p.pose) + delta_yaw
+            new_yaw = get_yaw_from_pose(p.pose) + delta_yaw
             new_yaw += normal(0, 0.1) # noise
             new_q = quaternion_from_euler(0.0, 0.0, new_yaw)
 
-            new_p.pose.orientation.x = new_q[0]
-            new_p.pose.orientation.y = new_q[1]
-            new_p.pose.orientation.z = new_q[2]
-            new_p.pose.orientation.w = new_q[3]
-            new_particle_cloud.append(new_p)
-
-        self.particle_cloud = new_particle_cloud
+            new_pose.orientation.x = new_q[0]
+            new_pose.orientation.y = new_q[1]
+            new_pose.orientation.z = new_q[2]
+            new_pose.orientation.w = new_q[3]
+            new_p = Particle(new_pose, p.w)
+            
+            self.particle_cloud[i] = new_p
 
 if __name__=="__main__":
     
