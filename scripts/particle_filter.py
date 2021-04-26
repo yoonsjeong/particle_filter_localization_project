@@ -87,7 +87,7 @@ class ParticleFilter:
         self.likelihood_field = LikelihoodField()
 
         # the number of particles used in the particle filter
-        self.num_particles = 10000
+        self.num_particles = 5
 
         # initialize the particle cloud array
         self.particle_cloud = []
@@ -140,7 +140,8 @@ class ParticleFilter:
             positions.append(p.pose)
 
         randomList = random.choices(positions, weights = prob_weights, k=self.num_particles)
-        return randomList
+
+        return deepcopy(randomList)
 
     def get_map(self, data):
 
@@ -168,7 +169,7 @@ class ParticleFilter:
             if grid[x_coord + y_coord * (width + 1)] < 0: continue
             else: 
                 theta = uniform(0, 2*np.pi)
-                coords.append([(x_coord - 197)* self.map.info.resolution , (y_coord -197) * self.map.info.resolution, theta])
+                coords.append([(x_coord - 192)* self.map.info.resolution, (y_coord -192) * self.map.info.resolution, theta])
                 # print(len(coords))
         print("get_paticle finishes")
         return coords
@@ -215,9 +216,9 @@ class ParticleFilter:
         new_particle_cloud = []
         for p in self.particle_cloud:
             new_p = p
-            if (new_p.w / weight_sum) == float('inf'):
-                print(f"got infinity for {new_p.w} / {weight_sum}")
             new_p.w = new_p.w / weight_sum
+            if (new_p.w) == float('inf'):
+                print(f"got infinity for {new_p.w} divided by {weight_sum}")
             new_particle_cloud.append(new_p)
         self.particle_cloud = new_particle_cloud
 
@@ -341,7 +342,7 @@ class ParticleFilter:
 
                 self.normalize_particles()
 
-                self.resample_particles()
+                # self.resample_particles()
 
                 self.update_estimated_robot_pose()
 
@@ -393,8 +394,9 @@ class ParticleFilter:
                 # starting if condition
                 ztk = data.ranges[idx]
                 if ztk >= 3.5: # z_max
-                    q = q * 1e-30
-                    continue
+                    ztk=3.5
+                    # q = q * 1e-30
+                    # continue
 
                 # boilerplate vars
                 particle_x, particle_y = p.pose.position.x, p.pose.position.y
@@ -437,7 +439,8 @@ class ParticleFilter:
         print("Running update_particles_with_motion_model...")
         
         delta_x, delta_y = self.curr_x - self.old_x, self.curr_y - self.old_y
-        delta_q = quaternion_from_euler(0.0, 0.0, self.curr_yaw - self.old_yaw)
+        delta_yaw = self.curr_yaw - self.old_yaw
+        # delta_q = quaternion_from_euler(0.0, 0.0, self.curr_yaw - self.old_yaw)
 
         new_particle_cloud = []
         for p in self.particle_cloud:
@@ -449,10 +452,14 @@ class ParticleFilter:
             new_p.pose.position.y += delta_y
             new_p.pose.position.y += normal(0, 0.1) # noise
 
-            new_p.pose.orientation.x += delta_q[0]
-            new_p.pose.orientation.y += delta_q[1]
-            new_p.pose.orientation.z += delta_q[2]
-            new_p.pose.orientation.w += delta_q[3]
+            new_yaw = get_yaw_from_pose(new_p.pose) + delta_yaw
+            new_yaw += normal(0, 0.1) # noise
+            new_q = quaternion_from_euler(0.0, 0.0, new_yaw)
+
+            new_p.pose.orientation.x = new_q[0]
+            new_p.pose.orientation.y = new_q[1]
+            new_p.pose.orientation.z = new_q[2]
+            new_p.pose.orientation.w = new_q[3]
             new_particle_cloud.append(new_p)
 
         self.particle_cloud = new_particle_cloud
