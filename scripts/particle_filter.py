@@ -42,15 +42,18 @@ def compute_prob_zero_centered_gaussian(dist, sd):
     return prob
 
 def draw_random_sample(particles, weights, num):
-    count = 0
-    bins = []
+    """ From a list of particles and weights, resamples `num` particles according
+        to the weights given. This is using a statistical sampling method covered
+        during office hours. """
+    count = 0 # if the weights add up to 1, this will be equal to 1.
+    bins = [] # bins will be used for the stats sampling method
 
     # create bins
     for w in weights:
         count += w
         bins.append(count)
     
-    # select num
+    # select `num` particles from the particle list
     out = []
     for _ in range(num):
         val = uniform(0, count)
@@ -147,18 +150,6 @@ class ParticleFilter:
 
         self.initialized = True
 
-    def draw_random_sample(self):
-        """ Draws a random sample of n elements from a given list of choices and their specified probabilities.
-        We recommend that you fill in this function using random_sample.
-        """
-        prob_weights = []
-        positions = []
-        for p in self.particle_cloud:
-            prob_weights.append(p.w)
-            positions.append(p.pose)
-        randomList = random.choices(positions, weights = prob_weights, k=self.num_particles)
-        return deepcopy(randomList)
-
     def get_map(self, data):
 
         self.map = data
@@ -227,7 +218,6 @@ class ParticleFilter:
 
     def publish_particle_cloud(self):
 
-        print("hello")
         particle_cloud_pose_array = PoseArray()
         particle_cloud_pose_array.header = Header(stamp=rospy.Time.now(), frame_id=self.map_topic)
         particle_cloud_pose_array.poses
@@ -415,7 +405,6 @@ class ParticleFilter:
             new_pose.position.y += delta_y * math.sin(new_yaw) # Multiply the odometry change in y acccording to the specific particles orientation by taking the cos of the new yaw 
             new_pose.position.y += normal(0, 0.1) # noise
 
-            
             new_yaw += normal(0, 0.1) # noise
             new_q = quaternion_from_euler(0.0, 0.0, new_yaw)
 
