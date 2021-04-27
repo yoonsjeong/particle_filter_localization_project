@@ -41,6 +41,25 @@ def compute_prob_zero_centered_gaussian(dist, sd):
     prob = c * math.exp((-math.pow(dist,2))/(2 * math.pow(sd, 2)))
     return prob
 
+def draw_random_sample(particles, weights, num):
+    count = 0
+    bins = []
+
+    # create bins
+    for w in weights:
+        count += w
+        bins.append(count)
+    
+    # select num
+    out = []
+    for _ in range(num):
+        val = uniform(0, count)
+        for j,b in enumerate(bins):
+            if val < b:
+                new_p = Particle(particles[j].pose, particles[j].w)
+                out.append(new_p)
+                break
+    return out
 
 class Particle:
 
@@ -127,22 +146,6 @@ class ParticleFilter:
         self.initialize_particle_cloud()
 
         self.initialized = True
-
-    def draw_random_sample(self):
-        """ Draws a random sample of n elements from a given list of choices and their specified probabilities.
-        We recommend that you fill in this function using random_sample.
-        """
-        # TODO
-        prob_weights = []
-        positions = []
-        for p in self.particle_cloud:
-            prob_weights.append(p.w)
-            positions.append(p.pose)
-
-
-        randomList = random.choices(positions, weights = prob_weights, k=self.num_particles)
-
-        return deepcopy(randomList)
 
     def get_map(self, data):
 
@@ -248,45 +251,16 @@ class ParticleFilter:
 
     def resample_particles(self):
 
-        # print("resample_particles")
-        # randomList = self.draw_random_sample()
-        # print(randomList)
         weight_list = []
         for p in self.particle_cloud:
             weight_list.append(p.w)
 
-        index_list = list(range(len(self.particle_cloud)))
-
-        new_particle_cloud = choice(index_list, \
-                                    p=weight_list, \
-                                    size=self.num_particles,\
-                                    replace=True)
-
-        new_particle_cloud = []
-        for i in index_list:
-            cp = deepcopy(self.particle_cloud[i])
-            new_particle_cloud.append(cp)
-
+        new_particle_cloud = draw_random_sample(self.particle_cloud, weight_list, self.num_particles)
         self.particle_cloud = new_particle_cloud
 
         print(f"resample_particles: {sum(weight_list)} should be approx 1.00") 
         print(f"length of weight list is {len(weight_list)}") 
 
-        # for p in self.particle_cloud:
-        #     print("old particle:", p)
-        print("========================")
-        for w in weight_list:
-            print("weight:", w)
-        # print("========================")
-        # for part in self.particle_cloud:
-        #     print("new part:", part)
-        #     print("new weight:", part.w)
-        # print("========================")
-        # for np in new_particle_cloud:
-        #     print("new:", np)
-        # for p in range(len(self.particle_cloud)):
-        #     self.particle_cloud[p].pose = randomList[p]
-        #     self.particle_cloud[p].w = 1
 
 
     def robot_scan_received(self, data):
