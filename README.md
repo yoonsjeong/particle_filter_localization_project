@@ -1,5 +1,8 @@
 # particle_filter_localization_project
 
+## GIF
+![gif][gif]
+
 ## Writeup
 
 ### Objectives Description
@@ -91,3 +94,4 @@ Jonah Kaye, Yoon Jeong
 **By next Wednesday:** We want to be finished with writing all the coding aspects and be working on debugging.
 This timeline may change as we work on it.
 
+[gif]: ./media/particle_filter.gif

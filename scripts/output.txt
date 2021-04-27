@@ -1,7 +1,0 @@
-initialize particle cloud
-get_paticle finishes
-0.05000000074505806
--10.0
-initialize particle finishes
-weight sum is  5000.0
-hello
