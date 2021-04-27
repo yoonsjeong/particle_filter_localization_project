@@ -139,6 +139,7 @@ class ParticleFilter:
             prob_weights.append(p.w)
             positions.append(p.pose)
 
+
         randomList = random.choices(positions, weights = prob_weights, k=self.num_particles)
 
         return deepcopy(randomList)
@@ -155,6 +156,7 @@ class ParticleFilter:
         width, height = self.map.info.width - 1, self.map.info.height - 1
         grid = self.map.data
 
+        resolution = 20 / width
         
         coords = []
         while len(coords) < self.num_particles:
@@ -165,27 +167,29 @@ class ParticleFilter:
             #y_coord = round(y_coord)
 
            #print(x_coord + y_coord * width, len(grid))
-            
+            x_mod = (x_coord * self.map.info.resolution) + self.map.info.origin.position.x + self.map.info.resolution / 2
+            y_mod = (y_coord * self.map.info.resolution) + self.map.info.origin.position.y + self.map.info.resolution/ 2
+
             if grid[x_coord + y_coord * (width + 1)] < 0: continue
             else: 
                 theta = uniform(0, 2*np.pi)
-                coords.append([(x_coord - 192)* self.map.info.resolution, (y_coord -192) * self.map.info.resolution, theta])
-                # print(len(coords))
+                ##coords.append([(x_coord - 192)* (self.map.info.resolution -0.0025), (y_coord -192) * (self.map.info.resolution - 0.0025), theta])
+                coords.append([x_mod,y_mod,theta])
         print("get_paticle finishes")
+        print(self.map.info.resolution)
+        print(self.map.info.origin.position.y)
         return coords
 
     def initialize_particle_cloud(self):
         
         print("initialize particle cloud")
         coords = self.get_particle()
+        ## resolution = (20/width)
         
         self.particle_cloud = []
         for coord in coords:
             pos_x, pos_y, theta = coord
             or_x, or_y, or_z, or_w = quaternion_from_euler(0.0, 0.0, theta)
-
-            if pos_y > 10:
-                print(pos_x)
             
             pose = Pose()
             pose.position.x = pos_x
