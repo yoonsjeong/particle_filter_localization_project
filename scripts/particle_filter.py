@@ -138,17 +138,15 @@ class ParticleFilter:
         for p in self.particle_cloud:
             prob_weights.append(p.w)
             positions.append(p.pose)
-
-
         randomList = random.choices(positions, weights = prob_weights, k=self.num_particles)
-
         return deepcopy(randomList)
 
     def get_map(self, data):
 
         self.map = data
     
-    def get_particle(self):
+    def get_particle(self): # This function randomly draws coordinates from the grid width and height and checks the occupancy grid that they are valid, 
+    # and then converts them to coordinates on the map
         """
         Gets particles in the form
             [x, y, yaw]
@@ -159,28 +157,22 @@ class ParticleFilter:
         resolution = 20 / width
         
         coords = []
-        while len(coords) < self.num_particles:
-            x_coord, y_coord = randint(0, width), randint(0, height)
-            #x_coord = (x - self.map.info.origin.position.x) ## * self.map.info.resolution
-            #x_coord = round(x_coord)
-            #y_coord = (y - self.map.info.origin.position.y) ## * self.map.info.resolution
-            #y_coord = round(y_coord)
-
-           #print(x_coord + y_coord * width, len(grid))
-            x_mod = (x_coord * self.map.info.resolution) + self.map.info.origin.position.x + self.map.info.resolution / 2
-            y_mod = (y_coord * self.map.info.resolution) + self.map.info.origin.position.y + self.map.info.resolution/ 2
+        while len(coords) < self.num_particles: # draws coordinates from the grid width and height until we have a valid set of particle coordinates of a size specified. 
+        # Converts the coordinates according to the formula found here: https://answers.ros.org/question/312326/conversion-from-cell-grid-to-map-point/
+            x_coord, y_coord = randint(0, width), randint(0, height) 
+            x_mod = (x_coord * self.map.info.resolution) + self.map.info.origin.position.x + self.map.info.resolution /2
+            y_mod = (y_coord * self.map.info.resolution) + self.map.info.origin.position.y + self.map.info.resolution/2
 
             if grid[x_coord + y_coord * (width + 1)] < 0: continue
             else: 
                 theta = uniform(0, 2*np.pi)
-                ##coords.append([(x_coord - 192)* (self.map.info.resolution -0.0025), (y_coord -192) * (self.map.info.resolution - 0.0025), theta])
                 coords.append([x_mod,y_mod,theta])
         print("get_paticle finishes")
         print(self.map.info.resolution)
         print(self.map.info.origin.position.y)
         return coords
 
-    def initialize_particle_cloud(self):
+    def initialize_particle_cloud(self): # this 
         
         print("initialize particle cloud")
         coords = self.get_particle()
