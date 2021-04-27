@@ -442,17 +442,20 @@ class ParticleFilter:
 
         new_particle_cloud = []
         for i,p in enumerate(self.particle_cloud):
+
+            new_yaw = get_yaw_from_pose(p.pose) + delta_yaw
+
             new_pose = Pose()
 
             new_pose.position.x = p.pose.position.x
-            new_pose.position.x += delta_x
+            new_pose.position.x += delta_x * math.cos(new_yaw)
             new_pose.position.x += normal(0, 0.1) # noise
 
             new_pose.position.y = p.pose.position.y
-            new_pose.position.y += delta_y
+            new_pose.position.y += delta_y * math.sin(new_yaw)
             new_pose.position.y += normal(0, 0.1) # noise
 
-            new_yaw = get_yaw_from_pose(p.pose) + delta_yaw
+            
             new_yaw += normal(0, 0.1) # noise
             new_q = quaternion_from_euler(0.0, 0.0, new_yaw)
 
